@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Controle de Equipamentos - Base SLZ</title>
+  <!-- Biblioteca QR Code leve e rápida -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #16a34a;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; }
+    .container { max-width: 1250px; margin: 0 auto; }
+    
+    /* Header com botão de QR Code */
+    header { 
+      margin-bottom: 24px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      flex-wrap: wrap; 
+      gap: 16px;
+    }
+    header h1 { font-size: 1.6rem; color: var(--primary); margin-bottom: 4px; }
+    header p { color: var(--text-muted); font-size: 0.95rem; }
+
+    .btn-qrcode {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-qrcode:hover { background: #334155; transform: translateY(-1px); }
+
+    /* Modal de QR Code e Modal de Foto */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 440px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      animation: modalFadeIn 0.2s ease-out;
+    }
+    .modal-photo-card {
+      max-width: 600px;
+      padding: 16px;
+    }
+    .modal-photo-card img {
+      max-width: 100%;
+      max-height: 70vh;
+      border-radius: 8px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    @keyframes modalFadeIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-card h3 { color: var(--primary); font-size: 1.3rem; margin-bottom: 8px; }
+    .modal-card p { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4; }
+    #qrcode-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      background: #fff;
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      margin: 0 auto 16px auto;
+      min-height: 200px;
+    }
+    #qrcode-box img, #qrcode-box canvas { margin: 0 auto; }
+    .modal-url-input {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      background: #f8fafc;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .modal-btns {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .btn-modal-print {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-modal-close {
+      background: #e2e8f0;
+      color: #334155;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Navegação das Abas */
+    .tabs-nav { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 20px; }
+    .tab-btn {
+      background: #e2e8f0; border: none; padding: 10px 18px; border-radius: 6px;
+      font-weight: 600; color: #475569; cursor: pointer; transition: 0.2s;
+    }
+    .tab-btn:hover { background: #cbd5e1; }
+    .tab-btn.active { background: var(--primary); color: #fff; }
+    
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Formulários e Cards */
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .item-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px;
+    }
+    .item-title { font-weight: 700; font-size: 1rem; color: #0f172a; }
+    
+    .btn-clear-card {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 0.78rem; cursor: pointer; text-decoration: underline; padding: 2px 6px;
+      border-radius: 4px; transition: 0.2s;
+    }
+    .btn-clear-card:hover { color: var(--danger); background: #fee2e2; text-decoration: none; }
+
+    .options-group { display: flex; flex-direction: column; gap: 8px; }
+    .checkbox-label, .radio-label { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; }
+    
+    .status-group { display: flex; gap: 16px; margin-top: 4px; margin-bottom: 8px; }
+    .status-group label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer; }
+    .inoperante-txt { color: var(--danger); font-weight: 600; }
+    .operante-txt { color: var(--success); font-weight: 600; }
+
+    /* Caixa de Comentário e Foto */
+    .comment-box {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--border);
+    }
+    .comment-box label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .comment-input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 8px;
+    }
+    .comment-input:focus { border-color: var(--primary); }
+
+    /* Foto do Dano Container */
+    .photo-input-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-photo {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-photo:hover { background: #e2e8f0; color: var(--primary); }
+    .photo-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+    }
+    .photo-preview-thumb {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-remove-photo {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    /* Ações */
+    .form-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .btn-submit {
+      background: var(--primary); color: white; border: none;
+      padding: 12px 24px; border-radius: 6px; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: 0.2s;
+    }
+    .btn-submit:hover { background: var(--primary-hover); }
+    .btn-submit:disabled { opacity: 0.65; cursor: not-allowed; }
+
+    .btn-clear-tab {
+      background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1;
+      padding: 12px 20px; border-radius: 6px; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: 0.2s;
+    }
+    .btn-clear-tab:hover { background: #cbd5e1; color: var(--text); }
+
+    /* Tabela */
+    .table-container { overflow-x: auto; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { background: #f1f5f9; font-weight: 600; color: #334155; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+    .badge-danger { background: #fee2e2; color: var(--danger); }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    
+    .table-photo-thumb {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .table-photo-thumb:hover { transform: scale(1.1); box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+
+    .btn-delete-row {
+      background: #fee2e2; color: var(--danger); border: 1px solid #fecaca;
+      padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;
+      transition: 0.2s;
+    }
+    .btn-delete-row:hover { background: var(--danger); color: white; }
+
+    .table-actions-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
+    }
+    .btn-refresh { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+    .btn-refresh:hover { background: var(--primary-hover); }
+    .btn-clear { background: var(--danger); color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+    .btn-clear:hover { background: var(--danger-hover); }
+    .btn-export { background: #059669; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+    .btn-export:hover { background: #047857; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>Painel de Controle de Equipamentos - Base SLZ</h1>
+      <p>Selecione a categoria do equipamento, informe as falhas, adicione observações, fotos do dano e registre a ocorrência.</p>
+    </div>
+    <button class="btn-qrcode" onclick="abrirModalQRCode()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+      </svg>
+      Gerar QR Code do Painel
+    </button>
+  </header>
+
+  <!-- Modal do QR Code -->
+  <div class="modal-overlay" id="modal-qrcode" onclick="fecharModalExterno(event, 'modal-qrcode')">
+    <div class="modal-card">
+      <h3>QR Code de Acesso Rápido</h3>
+      <p>Aponte a câmera do celular para abrir o painel ou imprima o código para colar nos balcões da base.</p>
+      
+      <div id="qrcode-box"></div>
+      
+      <input type="text" id="qr-current-url" class="modal-url-input" readonly>
+      
+      <div class="modal-btns">
+        <button class="btn-modal-print" onclick="imprimirQRCode()">Imprimir QR Code</button>
+        <button class="btn-modal-close" onclick="fecharModalQRCode()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Visualizar Foto Ampliada -->
+  <div class="modal-overlay" id="modal-photo-view" onclick="fecharModalExterno(event, 'modal-photo-view')">
+    <div class="modal-card modal-photo-card">
+      <h3 id="photo-view-title" style="margin-bottom:12px;">Foto do Dano</h3>
+      <img id="photo-view-img" src="" alt="Foto do dano">
+      <div class="modal-btns">
+        <button class="btn-modal-close" onclick="fecharModalFoto()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Abas de Navegação -->
+  <nav class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('tab-desktops')">Desktops</button>
+    <button class="tab-btn" onclick="switchTab('tab-mobile')">Celulares e Tablets</button>
+    <button class="tab-btn" onclick="switchTab('tab-dws')">DWS</button>
+    <button class="tab-btn" onclick="switchTab('tab-radios')">Rádios</button>
+    <button class="tab-btn" onclick="switchTab('tab-impressoras')">Impressoras</button>
+    <button class="tab-btn" onclick="switchTab('tab-registros')">Histórico de Registros</button>
+  </nav>
+
+  <!-- 1. Desktops -->
+  <div id="tab-desktops" class="tab-pane active">
+    <form id="form-desktops" onsubmit="salvarDesktop(event)">
+      <div class="grid-container" id="container-desktops"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" id="btn-submit-desk">Registrar Problemas em Desktops</button>
+        <button type="button" class="btn-clear-tab" onclick="limparAba('desktops')">Limpar Todos de Desktops</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 2. Celulares e Tablets -->
+  <div id="tab-mobile" class="tab-pane">
+    <form id="form-mobile" onsubmit="salvarPadrao(event, 'Celulares e Tablets', 'mobile')">
+      <div class="grid-container" id="container-mobile"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" id="btn-submit-mobile">Registrar Status (Mobile)</button>
+        <button type="button" class="btn-clear-tab" onclick="limparAba('mobile')">Limpar Todos de Mobile</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 3. DWS -->
+  <div id="tab-dws" class="tab-pane">
+    <form id="form-dws" onsubmit="salvarPadrao(event, 'DWS', 'dws')">
+      <div class="grid-container" id="container-dws"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" id="btn-submit-dws">Registrar Status (DWS)</button>
+        <button type="button" class="btn-clear-tab" onclick="limparAba('dws')">Limpar Todos de DWS</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 4. Rádios -->
+  <div id="tab-radios" class="tab-pane">
+    <form id="form-radios" onsubmit="salvarPadrao(event, 'Rádios', 'radios')">
+      <div class="grid-container" id="container-radios"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" id="btn-submit-radios">Registrar Status (Rádios)</button>
+        <button type="button" class="btn-clear-tab" onclick="limparAba('radios')">Limpar Todos de Rádios</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 5. Impressoras -->
+  <div id="tab-impressoras" class="tab-pane">
+    <form id="form-impressoras" onsubmit="salvarPadrao(event, 'Impressoras', 'impressoras')">
+      <div class="grid-container" id="container-impressoras"></div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" id="btn-submit-impressoras">Registrar Status (Impressoras)</button>
+        <button type="button" class="btn-clear-tab" onclick="limparAba('impressoras')">Limpar Todos de Impressoras</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 6. Registros -->
+  <div id="tab-registros" class="tab-pane">
+    <div class="table-actions-header">
+      <div style="display:flex; gap:10px;">
+        <button class="btn-refresh" onclick="carregarHistoricoNuvem()">&#x21bb; Atualizar da Nuvem</button>
+        <button class="btn-export" onclick="exportarCSV()">Exportar para Excel (CSV)</button>
+      </div>
+      <button class="btn-clear" onclick="limparTodoHistorico()">Limpar Todo o Histórico</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Categoria</th>
+            <th>Identificação / Localização</th>
+            <th>Falha / Condição</th>
+            <th>Descrição do Dano</th>
+            <th style="width: 70px; text-align: center;">Foto</th>
+            <th style="width: 80px; text-align: center;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="registros-tbody">
+          <tr><td colspan="7" style="text-align:center; padding: 24px; color:#64748b;">Carregando registros da nuvem...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Link direto do Google Apps Script configurado
+  const API_URL = "https://script.google.com/macros/s/AKfycbx-I7ImKamcNVuU_t6oabznsD5v93wAWFBdn5alNMR0FUXv4mIKtj1S3T_z-56brd0JiQ/exec";
+
+  // Listas da base SLZ
+  const dados = {
+    desktops: [
+      "Check-in 14", "Check-in 15", "Check-in 16", "Check-in 17",
+      "Check-in 18", "Check-in 19", "Check-in 20", "Check-in 21", "Check-in 22",
+      "Gafanhoto 1", "Gafanhoto 2",
+      "Robocop 1", "Robocop 2", "Robocop 3", "Robocop 4",
+      "Loja 1", "Loja 2", "Loja 3", "Loja 4",
+      "Check out 1", "Check out 3", "Check out 4", "Check out 5",
+      "Check out 6", "Check out 7", "Check out 8",
+      "LL 01", "LL 02"
+    ],
+    mobile: [
+      "BRS 01", "BRS 02", "BRS 03", "BRS 04",
+      "Embarque 01", "Embarque 02",
+      "Tablet 01", "Tablet 02", "Lost Luggage"
+    ],
+    dws: [
+      "DWS 01", "DWS 02"
+    ],
+    radios: [
+      "TECA LATAM", "LIDER 01", "LIDER 02",
+      "EMBARQUE 01", "EMBARQUE 02", "EMBARQUE 03", "EMBARQUE 04", "EMBARQUE 05",
+      "CHECK IN",
+      "AUX DESP 01", "AUX DESP 02", "AUX DESP 03", "AUX DESP 04",
+      "DNATA TRIAGEM", "DNATA 01", "DNATA 02",
+      "DESEMBARQUE", "CONTROLER", "SUPERVISÃO", "LIMA LIMA", "LOJA"
+    ],
+    impressoras: [
+      "Check out", "LL", "Loja"
+    ]
+  };
+
+  const componentesDesktop = [
+    "Impressora de bagagem",
+    "Impressora de cartão de embarque",
+    "Monitor",
+    "PC em geral",
+    "Sistema"
+  ];
+
+  // Armazenamento temporário de fotos em base64 compactadas
+  const fotosTemp = {};
+  let registrosCache = [];
+
+  // Alternar abas
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    
+    const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+    if (btn) btn.classList.add('active');
+
+    if (tabId === 'tab-registros') carregarHistoricoNuvem();
+  }
+
+  // Renderizar componentes
+  function buildForms() {
+    // Desktops
+    const cDesktops = document.getElementById('container-desktops');
+    cDesktops.innerHTML = dados.desktops.map((loc, idx) => `
+      <div class="item-card" id="card-desk-${idx}">
+        <div>
+          <div class="card-header">
+            <span class="item-title">${loc}</span>
+            <button type="button" class="btn-clear-card" onclick="limparCardDesktop(${idx})">Limpar item</button>
+          </div>
+          <div class="options-group">
+            ${componentesDesktop.map((comp) => `
+              <label class="checkbox-label">
+                <input type="checkbox" name="desk_${idx}" value="${comp}">
+                <span>${comp}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        <div class="comment-box">
+          <label for="comment_desk_${idx}">Descrição do dano / detalhes:</label>
+          <input type="text" id="comment_desk_${idx}" class="comment-input" placeholder="Ex: cabo rompido, erro ao inicializar...">
+          
+          <div class="photo-input-container">
+            <label class="btn-photo">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              Foto do Dano
+              <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="processarFoto(event, 'desk_${idx}')">
+            </label>
+            <div class="photo-preview-wrap" id="wrap_photo_desk_${idx}">
+              <img id="img_preview_desk_${idx}" class="photo-preview-thumb" onclick="abrirFotoVisualizacao('desk_${idx}', '${loc}')">
+              <button type="button" class="btn-remove-photo" onclick="removerFoto('desk_${idx}')" title="Remover foto">&times;</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    // Demais equipamentos
+    const montarStatus = (lista, containerId, prefix) => {
+      const container = document.getElementById(containerId);
+      container.innerHTML = lista.map((nome, idx) => `
+        <div class="item-card" id="card-${prefix}-${idx}">
+          <div>
+            <div class="card-header">
+              <span class="item-title">${nome}</span>
+              <button type="button" class="btn-clear-card" onclick="limparCardStatus('${prefix}', ${idx})">Limpar item</button>
+            </div>
+            <div class="status-group">
+              <label class="radio-label">
+                <input type="radio" name="${prefix}_${idx}" value="Operante" checked>
+                <span class="operante-txt">Operante</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="${prefix}_${idx}" value="Inoperante">
+                <span class="inoperante-txt">Inoperante</span>
+              </label>
+            </div>
+          </div>
+          <div class="comment-box">
+            <label for="comment_${prefix}_${idx}">Descrição do dano / detalhes:</label>
+            <input type="text" id="comment_${prefix}_${idx}" class="comment-input" placeholder="Ex: tela quebrada, bateria não segura...">
+            
+            <div class="photo-input-container">
+              <label class="btn-photo">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Foto do Dano
+                <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="processarFoto(event, '${prefix}_${idx}')">
+              </label>
+              <div class="photo-preview-wrap" id="wrap_photo_${prefix}_${idx}">
+                <img id="img_preview_${prefix}_${idx}" class="photo-preview-thumb" onclick="abrirFotoVisualizacao('${prefix}_${idx}', '${nome}')">
+                <button type="button" class="btn-remove-photo" onclick="removerFoto('${prefix}_${idx}')" title="Remover foto">&times;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    montarStatus(dados.mobile, 'container-mobile', 'mob');
+    montarStatus(dados.dws, 'container-dws', 'dws');
+    montarStatus(dados.radios, 'container-radios', 'rad');
+    montarStatus(dados.impressoras, 'container-impressoras', 'imp');
+  }
+
+  // Compressão e processamento de imagem
+  function processarFoto(event, key) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const maxDimension = 640;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.65);
+        fotosTemp[key] = compressedBase64;
+
+        const previewImg = document.getElementById(`img_preview_${key}`);
+        const wrap = document.getElementById(`wrap_photo_${key}`);
+        if (previewImg && wrap) {
+          previewImg.src = compressedBase64;
+          wrap.style.display = 'inline-flex';
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  }
+
+  function removerFoto(key) {
+    delete fotosTemp[key];
+    const wrap = document.getElementById(`wrap_photo_${key}`);
+    const previewImg = document.getElementById(`img_preview_${key}`);
+    if (wrap) wrap.style.display = 'none';
+    if (previewImg) previewImg.src = '';
+  }
+
+  function abrirFotoVisualizacao(keyOuSrc, titulo) {
+    const src = fotosTemp[keyOuSrc] || keyOuSrc;
+    if (!src) return;
+    document.getElementById('photo-view-title').textContent = titulo ? `Foto do Dano: ${titulo}` : 'Foto do Dano';
+    document.getElementById('photo-view-img').src = src;
+    document.getElementById('modal-photo-view').classList.add('active');
+  }
+
+  function fecharModalFoto() {
+    document.getElementById('modal-photo-view').classList.remove('active');
+  }
+
+  // Limpeza individual de card
+  function limparCardDesktop(idx) {
+    document.querySelectorAll(`input[name="desk_${idx}"]`).forEach(cb => cb.checked = false);
+    const commentEl = document.getElementById(`comment_desk_${idx}`);
+    if (commentEl) commentEl.value = '';
+    removerFoto(`desk_${idx}`);
+  }
+
+  function limparCardStatus(prefix, idx) {
+    const radioOp = document.querySelector(`input[name="${prefix}_${idx}"][value="Operante"]`);
+    if (radioOp) radioOp.checked = true;
+    const commentEl = document.getElementById(`comment_${prefix}_${idx}`);
+    if (commentEl) commentEl.value = '';
+    removerFoto(`${prefix}_${idx}`);
+  }
+
+  // Limpeza completa por aba
+  function limparAba(chave) {
+    if (!confirm(`Deseja limpar todas as seleções, comentários e fotos da aba de ${chave}?`)) return;
+
+    if (chave === 'desktops') {
+      dados.desktops.forEach((_, idx) => limparCardDesktop(idx));
+    } else {
+      const prefixMap = { 'mobile': 'mob', 'dws': 'dws', 'radios': 'rad', 'impressoras': 'imp' };
+      const prefix = prefixMap[chave];
+      dados[chave].forEach((_, idx) => limparCardStatus(prefix, idx));
+    }
+  }
+
+  // Enviar registros para o Google Sheets
+  async function enviarParaNuvem(novosRegistros, btnElement) {
+    const originalText = btnElement.innerHTML;
+    btnElement.disabled = true;
+    btnElement.innerHTML = "<span>Enviando para a Nuvem...</span>";
+
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(novosRegistros)
+      });
+
+      alert(`${novosRegistros.length} chamado(s) salvo(s) na Planilha Google com sucesso!`);
+      switchTab('tab-registros');
+    } catch (err) {
+      alert("Houve uma instabilidade na conexão, mas vamos atualizar a lista.");
+      switchTab('tab-registros');
+    } finally {
+      btnElement.disabled = false;
+      btnElement.innerHTML = originalText;
+    }
+  }
+
+  // Excluir chamado individual (na Nuvem e na tela)
+  async function excluirRegistro(id) {
+    if (!confirm("Deseja realmente excluir este chamado do histórico?")) return;
+
+    registrosCache = registrosCache.filter(r => String(r.id) !== String(id));
+    renderizarTabela();
+
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "delete", id: String(id) })
+      });
+    } catch (e) {
+      console.warn("Sincronização em segundo plano...");
+    }
+  }
+
+  // Limpar todo o histórico (na Nuvem e na tela)
+  async function limparTodoHistorico() {
+    if (!confirm("ATENÇÃO: Deseja apagar TODO o histórico de registros da base?")) return;
+
+    registrosCache = [];
+    renderizarTabela();
+
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "clear_all" })
+      });
+      alert("Todo o histórico foi limpo com sucesso!");
+    } catch (e) {
+      console.warn("Sincronização em segundo plano...");
+    }
+  }
+
+  // Carregar histórico de chamados da nuvem
+  async function carregarHistoricoNuvem() {
+    const tbody = document.getElementById('registros-tbody');
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 24px; color:#64748b;">Buscando registros na nuvem...</td></tr>`;
+
+    try {
+      const res = await fetch(API_URL);
+      const registros = await res.json();
+      registrosCache = registros;
+      renderizarTabela();
+    } catch (err) {{
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:24px;">Erro ao carregar dados da nuvem. Clique em "Atualizar da Nuvem" para tentar novamente.</td></tr>`;
+    }}
+  }
+
+  function renderizarTabela() {
+    const tbody = document.getElementById('registros-tbody');
+
+    if (!registrosCache || registrosCache.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: #94a3b8; padding: 24px;">Nenhum chamado registrado até o momento na planilha.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = registrosCache.map(r => `
+      <tr>
+        <td style="white-space: nowrap;">${r.dataHora || '-'}</td>
+        <td><strong>${r.categoria || '-'}</strong></td>
+        <td><strong>${r.identificacao || '-'}</strong></td>
+        <td>
+          <span class="badge ${r.status === 'Inoperante' ? 'badge-danger' : 'badge-warning'}">
+            ${r.status || '-'}
+          </span>
+        </td>
+        <td>${r.descricao || '-'}</td>
+        <td style="text-align: center;">
+          ${r.foto && r.foto.length > 20 ? `<img src="${r.foto}" class="table-photo-thumb" onclick="abrirFotoVisualizacao('${r.foto}', '${r.identificacao}')" title="Clique para ampliar">` : '<span style="color:#94a3b8; font-size:0.8rem;">Sem foto</span>'}
+        </td>
+        <td style="text-align: center;">
+          <button class="btn-delete-row" onclick="excluirRegistro('${r.id}')" title="Excluir este chamado">Excluir</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function salvarDesktop(e) {
+    e.preventDefault();
+    const dataHora = new Date().toLocaleString('pt-BR');
+    const registros = [];
+    const btn = document.getElementById('btn-submit-desk');
+
+    dados.desktops.forEach((loc, idx) => {
+      const marcados = Array.from(document.querySelectorAll(`input[name="desk_${idx}"]:checked`)).map(i => i.value);
+      const desc = document.getElementById(`comment_desk_${idx}`)?.value.trim() || '';
+      const foto = fotosTemp[`desk_${idx}`] || "";
+
+      if (marcados.length > 0 || desc.length > 0 || foto) {
+        registros.push({
+          id: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          dataHora,
+          categoria: "Desktops",
+          identificacao: loc,
+          status: marcados.length > 0 ? "Problema: " + marcados.join(', ') : "Chamado aberto",
+          descricao: desc || "Não informada",
+          foto: foto
+        });
+      }
+    });
+
+    if (registros.length === 0) {
+      alert("Nenhum componente, observação de dano ou foto foi inserida.");
+      return;
+    }
+
+    dados.desktops.forEach((_, idx) => limparCardDesktop(idx));
+    enviarParaNuvem(registros, btn);
+  }
+
+  function salvarPadrao(e, categoria, key) {
+    e.preventDefault();
+    const prefixMap = { 'mobile': 'mob', 'dws': 'dws', 'radios': 'rad', 'impressoras': 'imp' };
+    const prefix = prefixMap[key];
+    const dataHora = new Date().toLocaleString('pt-BR');
+    const registros = [];
+    const lista = dados[key];
+    const btn = document.getElementById(`btn-submit-${key}`);
+
+    lista.forEach((nome, idx) => {
+      const status = document.querySelector(`input[name="${prefix}_${idx}"]:checked`)?.value;
+      const desc = document.getElementById(`comment_${prefix}_${idx}`)?.value.trim() || '';
+      const foto = fotosTemp[`${prefix}_${idx}`] || "";
+
+      if (status === "Inoperante" || desc.length > 0 || foto) {
+        registros.push({
+          id: Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          dataHora,
+          categoria,
+          identificacao: nome,
+          status: status,
+          descricao: desc || "Não informada",
+          foto: foto
+        });
+      }
+    });
+
+    if (registros.length === 0) {
+      alert("Nenhum item foi marcado como Inoperante ou com descrição/foto de dano.");
+      return;
+    }
+
+    dados[key].forEach((_, idx) => limparCardStatus(prefix, idx));
+    enviarParaNuvem(registros, btn);
+  }
+
+  function exportarCSV() {
+    if (!registrosCache || registrosCache.length === 0) {
+      alert("Não há dados carregados para exportar.");
+      return;
+    }
+
+    let csv = "Data/Hora;Categoria;Identificacao/Localizacao;Condicao/Falha;Descricao do Dano;Possui Foto\n";
+    registrosCache.forEach(r => {
+      const data = `"${r.dataHora || ''}"`;
+      const cat = `"${r.categoria || ''}"`;
+      const ident = `"${r.identificacao || ''}"`;
+      const st = `"${r.status || ''}"`;
+      const desc = `"${(r.descricao || '').replace(/"/g, '""')}"`;
+      const temFoto = (r.foto && r.foto.length > 20) ? '"Sim"' : '"Não"';
+      csv += `${data};${cat};${ident};${st};${desc};${temFoto}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'relatorio_ocorrencias_slz_nuvem.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // Funções do Modal de QR Code
+  let qrCodeInstance = null;
+
+  function abrirModalQRCode() {
+    const modal = document.getElementById('modal-qrcode');
+    const qrBox = document.getElementById('qrcode-box');
+    const urlInput = document.getElementById('qr-current-url');
+    
+    const urlAtual = window.location.href;
+    urlInput.value = urlAtual;
+
+    qrBox.innerHTML = '';
+
+    if (typeof QRCode !== 'undefined') {
+      qrCodeInstance = new QRCode(qrBox, {
+        text: urlAtual,
+        width: 190,
+        height: 190,
+        colorDark : "#0f172a",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+      });
+    } else {
+      const img = document.createElement('img');
+      img.src = "https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=" + encodeURIComponent(urlAtual);
+      img.alt = "QR Code";
+      qrBox.appendChild(img);
+    }
+
+    modal.classList.add('active');
+  }
+
+  function fecharModalQRCode() {
+    document.getElementById('modal-qrcode').classList.remove('active');
+  }
+
+  function fecharModalExterno(e, modalId) {
+    if (e.target.id === modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+  }
+
+  function imprimirQRCode() {
+    const qrImg = document.querySelector('#qrcode-box img') || document.querySelector('#qrcode-box canvas');
+    const urlAtual = document.getElementById('qr-current-url').value;
+    
+    if (!qrImg) return;
+
+    let imgSrc = qrImg.src;
+    if (qrImg.tagName.toLowerCase() === 'canvas') {
+      imgSrc = qrImg.toDataURL("image/png");
+    }
+
+    const janelaPrint = window.open('', '_blank');
+    janelaPrint.document.write(`
+      <html>
+        <head>
+          <title>Imprimir QR Code - Controle Base SLZ</title>
+          <style>
+            body { font-family: sans-serif; text-align: center; padding: 40px; }
+            h2 { color: #1e3a8a; margin-bottom: 8px; }
+            p { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+            img { width: 260px; height: 260px; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; }
+            .url-txt { margin-top: 16px; font-weight: bold; color: #334155; font-size: 13px; word-break: break-all; }
+          </style>
+        </head>
+        <body>
+          <h2>Acesse o Painel de Equipamentos</h2>
+          <p>Aponte a câmera do seu celular para reportar defeitos ou checar os equipamentos da Base SLZ</p>
+          <img src="${imgSrc}" alt="QR Code">
+          <div class="url-txt">${urlAtual}</div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          <\/script>
+        </body>
+      </html>
+    `);
+    janelaPrint.document.close();
+  }
+
+  window.onload = () => {
+    buildForms();
+    carregarHistoricoNuvem();
+  };
+</script>
+
+</body>
+</html>
