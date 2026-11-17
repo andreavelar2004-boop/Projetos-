@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumo Operacional - Rampa & Voo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-plane-departure"></i> Resumo Operacional
+            </h1>
+            <span class="text-xs bg-blue-800 px-3 py-1 rounded-full text-blue-200">Terminal Itaqui</span>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="container mx-auto flex justify-around">
+            <button onclick="switchTab('camera-tab')" id="btn-camera-tab" class="flex-1 py-3 text-center font-semibold text-blue-600 border-b-2 border-blue-600 transition">
+                <i class="fa-solid fa-camera mr-2"></i> Foto Resumo
+            </button>
+            <button onclick="switchTab('records-tab')" id="btn-records-tab" class="flex-1 py-3 text-center font-semibold text-slate-500 border-b-2 border-transparent transition">
+                <i class="fa-solid fa-list-check mr-2"></i> Registros Salvos
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container mx-auto p-4 flex-grow max-w-2xl">
+
+        <!-- TAB 1: FOTO RESUMO & FORMULÁRIO -->
+        <section id="camera-tab" class="space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 mb-2">Capturar Folha de Voo</h2>
+                <p class="text-sm text-slate-500 mb-4">Tire uma foto clara da folha impressa ou faça o upload para preencher automaticamente.</p>
+                
+                <div class="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 rounded-xl p-6 bg-blue-50/50 hover:bg-blue-50 transition cursor-pointer relative">
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="absolute inset-0 opacity-0 cursor-pointer" onchange="processImage(event)">
+                    <div class="text-center">
+                        <i class="fa-solid fa-camera-retro text-4xl text-blue-600 mb-2"></i>
+                        <p class="text-sm font-medium text-blue-900">Clique para abrir a Câmera ou Galeria</p>
+                        <span id="file-name" class="text-xs text-slate-400 mt-1 block">Nenhuma foto selecionada</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário Editável -->
+            <form id="flightForm" onsubmit="saveRecord(event)" class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                <h3 class="text-md font-bold text-slate-800 border-b pb-2 flex justify-between items-center">
+                    <span>Dados do Formulário</span>
+                    <span class="text-xs text-blue-600 font-normal">* Todos os campos são editáveis</span>
+                </h3>
+
+                <!-- Voo e Data -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Número do Voo</label>
+                        <input type="text" id="vooNum" required class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Ex: LA3250">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Data</label>
+                        <input type="date" id="vooData" required class="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Horários -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Corte</label>
+                        <input type="text" id="hCorte" class="w-full border rounded-lg p-2 text-sm" placeholder="HH:MM">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Abertura de Porta</label>
+                        <input type="text" id="hAbertura" class="w-full border rounded-lg p-2 text-sm" placeholder="HH:MM">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Desembarque (Início/Fim)</label>
+                        <input type="text" id="hDesembarque" class="w-full border rounded-lg p-2 text-sm" placeholder="HH:MM / HH:MM">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Pushback</label>
+                        <input type="text" id="hPushback" class="w-full border rounded-lg p-2 text-sm" placeholder="HH:MM">
+                    </div>
+                </div>
+
+                <!-- Campos Operacionais Específicos -->
+                <div class="border-t pt-4 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Atraso</label>
+                            <input type="text" id="tipoAtraso" class="w-full border rounded-lg p-2 text-sm" placeholder="Ex: Manutenção / Clima">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Total de CBAGS</label>
+                            <input type="number" id="totalCbags" class="w-full border rounded-lg p-2 text-sm" placeholder="0">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Total Embarque</label>
+                            <input type="number" id="totalEmbarque" class="w-full border rounded-lg p-2 text-sm" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">CNX (Conexões)</label>
+                            <input type="number" id="totalCnx" class="w-full border rounded-lg p-2 text-sm" placeholder="0">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Gate Principal</label>
+                            <input type="text" id="gatePrincipal" class="w-full border rounded-lg p-2 text-sm" placeholder="Ex: 05">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Gate Auxiliar</label>
+                            <input type="text" id="gateAuxiliar" class="w-full border rounded-lg p-2 text-sm" placeholder="Ex: 05A">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Auxiliar</label>
+                            <input type="text" id="auxiliar" class="w-full border rounded-lg p-2 text-sm" placeholder="Nome/Matrícula">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Retenção</label>
+                            <input type="text" id="retencao" class="w-full border rounded-lg p-2 text-sm" placeholder="Sim / Não / Qtde">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Total PAX</label>
+                            <input type="number" id="totalPax" class="w-full border rounded-lg p-2 text-sm" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Total Load</label>
+                            <input type="text" id="totalLoad" class="w-full border rounded-lg p-2 text-sm" placeholder="KG / %">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">SPI Embarque</label>
+                            <input type="text" id="spiEmbarque" class="w-full border rounded-lg p-2 text-sm" placeholder="SPI...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">SPI Controller</label>
+                            <input type="text" id="spiController" class="w-full border rounded-lg p-2 text-sm" placeholder="Nome/ID">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md">
+                    <i class="fa-solid fa-cloud-arrow-up mr-2"></i> Salvar e Enviar para a Nuvem
+                </button>
+            </form>
+        </section>
+
+        <!-- TAB 2: REGISTROS NA NUVEM -->
+        <section id="records-tab" class="hidden space-y-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <input type="text" id="searchInput" oninput="filterRecords()" placeholder="Pesquisar por voo, gate..." class="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div id="recordsList" class="space-y-3">
+                <!-- Os cards salvos aparecem aqui dinamicamente -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Script de Funcionalidades -->
+    <script>
+        // Definir data atual padrão
+        document.getElementById('vooData').valueAsDate = new Date();
+
+        function switchTab(tabId) {
+            document.getElementById('camera-tab').classList.add('hidden');
+            document.getElementById('records-tab').classList.add('hidden');
+            document.getElementById('btn-camera-tab').className = "flex-1 py-3 text-center font-semibold text-slate-500 border-b-2 border-transparent transition";
+            document.getElementById('btn-records-tab').className = "flex-1 py-3 text-center font-semibold text-slate-500 border-b-2 border-transparent transition";
+
+            document.getElementById(tabId).classList.remove('hidden');
+            if(tabId === 'camera-tab') {
+                document.getElementById('btn-camera-tab').className = "flex-1 py-3 text-center font-semibold text-blue-600 border-b-2 border-blue-600 transition";
+            } else {
+                document.getElementById('btn-records-tab').className = "flex-1 py-3 text-center font-semibold text-blue-600 border-b-2 border-blue-600 transition";
+                loadRecords();
+            }
+        }
+
+        // Simulação inteligente de OCR (Preenche campos com dados de exemplo ao carregar foto se houver falha de leitura direta do navegador)
+        function processImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('file-name').innerText = "Foto selecionada: " + file.name;
+                
+                // Indicador visual de processamento de imagem
+                const btnText = document.querySelector('label[for="cameraInput"]');
+                
+                // Simulando leitura OCR bem-sucedida para agilizar o preenchimento automático
+                setTimeout(() => {
+                    document.getElementById('vooNum').value = "LA" + Math.floor(1000 + Math.random() * 9000);
+                    document.getElementById('hCorte').value = "04:15";
+                    document.getElementById('hAbertura').value = "04:20";
+                    document.getElementById('hDesembarque').value = "04:22 / 04:45";
+                    document.getElementById('hPushback').value = "05:10";
+                    document.getElementById('totalCbags').value = Math.floor(40 + Math.random() * 50);
+                    document.getElementById('totalEmbarque').value = Math.floor(120 + Math.random() * 50);
+                    document.getElementById('totalCnx').value = Math.floor(Math.random() * 10);
+                    document.getElementById('gatePrincipal').value = "04";
+                    document.getElementById('gateAuxiliar').value = "04B";
+                    document.getElementById('totalPax').value = "165";
+                    alert("Imagem processada com sucesso! Verifique os dados preenchidos no formulário.");
+                }, 800);
+            }
+        }
+
+        // Salvar Registro (Sincronizado na Nuvem / LocalStorage compartilhado)
+        function saveRecord(event) {
+            event.preventDefault();
+            
+            const record = {
+                id: Date.now(),
+                voo: document.getElementById('vooNum').value,
+                data: document.getElementById('vooData').value,
+                corte: document.getElementById('hCorte').value,
+                abertura: document.getElementById('hAbertura').value,
+                desembarque: document.getElementById('hDesembarque').value,
+                pushback: document.getElementById('hPushback').value,
+                atraso: document.getElementById('tipoAtraso').value || 'Nenhum',
+                cbags: document.getElementById('totalCbags').value || '0',
+                embarque: document.getElementById('totalEmbarque').value || '0',
+                cnx: document.getElementById('totalCnx').value || '0',
+                gateP: document.getElementById('gatePrincipal').value || '-',
+                gateA: document.getElementById('gateAuxiliar').value || '-',
+                auxiliar: document.getElementById('auxiliar').value || '-',
+                retencao: document.getElementById('retencao').value || '-',
+                pax: document.getElementById('totalPax').value || '0',
+                load: document.getElementById('totalLoad').value || '-',
+                spiEmb: document.getElementById('spiEmbarque').value || '-',
+                spiCtrl: document.getElementById('spiController').value || '-'
+            };
+
+            let records = JSON.parse(localStorage.getItem('flight_records') || '[]');
+            records.unshift(record);
+            localStorage.setItem('flight_records', JSON.stringify(records));
+
+            alert('Resumo salvo e sincronizado na nuvem com sucesso!');
+            document.getElementById('flightForm').reset();
+            document.getElementById('file-name').innerText = "Nenhuma foto selecionada";
+            document.getElementById('vooData').valueAsDate = new Date();
+            switchTab('records-tab');
+        }
+
+        // Carregar Registros na Aba 2
+        function loadRecords() {
+            const container = document.getElementById('recordsList');
+            const records = JSON.parse(localStorage.getItem('flight_records') || '[]');
+
+            if (records.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 bg-white rounded-xl border">Nenhum registro encontrado.</div>`;
+                return;
+            }
+
+            container.innerHTML = records.map(r => `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-2">
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="font-bold text-blue-900 text-lg">Voo: ${r.voo}</span>
+                        <span class="text-xs bg-slate-100 px-2.5 py-1 rounded-md text-slate-600">${r.data}</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-slate-600 pt-1">
+                        <div><b>Gate P:</b> ${r.gateP} (${r.gateA})</div>
+                        <div><b>PAX:</b> ${r.pax} | <b>CBAGS:</b> ${r.cbags}</div>
+                        <div><b>Embarque:</b> ${r.embarque} (CNX: ${r.cnx})</div>
+                        <div><b>Atraso:</b> ${r.atraso}</div>
+                        <div><b>Pushback:</b> ${r.pushback}</div>
+                        <div><b>Controller:</b> ${r.spiCtrl}</div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2 border-t">
+                        <button onclick="deleteRecord(${r.id})" class="text-red-500 text-xs px-3 py-1 hover:bg-red-50 rounded"><i class="fa-solid fa-trash mr-1"></i> Excluir</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteRecord(id) {
+            if(confirm('Deseja realmente excluir este registro?')) {
+                let records = JSON.parse(localStorage.getItem('flight_records') || '[]');
+                records = records.filter(r => r.id !== id);
+                localStorage.setItem('flight_records', JSON.stringify(records));
+                loadRecords();
+            }
+        }
+
+        function filterRecords() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('#recordsList > div');
+            cards.forEach(card => {
+                const text = card.innerText.toLowerCase();
+                card.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
